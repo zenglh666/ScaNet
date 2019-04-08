@@ -66,48 +66,47 @@ def cifar(mode, params):
     for f in data_files:
         if not tf.gfile.Exists(f):
             raise ValueError('Failed to find file: ' + f)
+   
+    record_bytes = label_bytes + image_bytes
+    dataset = tf.data.FixedLengthRecordDataset(data_files, record_bytes)
 
-    with tf.device("/cpu:0"):       
-        record_bytes = label_bytes + image_bytes
-        dataset = tf.data.FixedLengthRecordDataset(data_files, record_bytes)
+    dataset = dataset.map(
+        lambda example_serialized: tf.decode_raw(example_serialized, tf.uint8)
+    )
 
-        dataset = dataset.map(
-            lambda example_serialized: tf.decode_raw(example_serialized, tf.uint8)
-        )
-
-        dataset = dataset.map(
-            lambda record: (
-                tf.transpose(
-                    tf.reshape(
-                        tf.slice(record, [label_bytes], [image_bytes]),
-                        [3, 32, 32]
-                    ),
-                    [1, 2, 0]
-                ),
+    dataset = dataset.map(
+        lambda record: (
+            tf.transpose(
                 tf.reshape(
-                    tf.cast(
-                        tf.slice(record, [label_bytes - 1], [label_bytes]), 
-                        tf.int32), 
-                    []
-                )
+                    tf.slice(record, [label_bytes], [image_bytes]),
+                    [3, 32, 32]
+                ),
+                [1, 2, 0]
+            ),
+            tf.reshape(
+                tf.cast(
+                    tf.slice(record, [label_bytes - 1], [label_bytes]), 
+                    tf.int32), 
+                []
             )
         )
+    )
 
-        
-        if mode == "train":
-            dataset = dataset.cache()
-            dataset = dataset.repeat()
-            dataset = dataset.shuffle(params.buffer_size)
+    
+    if mode == "train":
+        dataset = dataset.cache()
+        dataset = dataset.repeat()
+        dataset = dataset.shuffle(params.buffer_size)
 
-        dataset = dataset.map(
-            lambda image, label: (
-                preprocess_image_cifar(image, mode=="train"),
-                label
-            )
+    dataset = dataset.map(
+        lambda image, label: (
+            preprocess_image_cifar(image, mode=="train"),
+            label
         )
+    )
 
-        # Create iterator
-        dataset = dataset.batch(params.batch_size)
-        dataset = dataset.prefetch(params.pre_fetch)
+    # Create iterator
+    dataset = dataset.batch(params.batch_size)
+    dataset = dataset.prefetch(params.pre_fetch)
     return dataset
 

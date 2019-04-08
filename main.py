@@ -234,7 +234,7 @@ def run_config(params):
     gpu_options=tf.GPUOptions(allow_growth=True, visible_device_list=device_str)
 
     session_config = tf.ConfigProto(
-        allow_soft_placement=False,
+        allow_soft_placement=True,
         graph_options=graph_options,
         gpu_options=gpu_options)
 

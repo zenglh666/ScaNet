@@ -17,7 +17,7 @@ class Model(interface.DenseModel):
         params = self._params
         scope = self._scope
         with tf.variable_scope(scope, reuse=tf.AUTO_REUSE, initializer=initializer, regularizer=regularizer):
-            features = self.densenet(False, params.blocks, images, params.reduction)
+            features = self.densenet(False, params.blocks, params.growth_rate, images, params.reduction)
 
             if params.dataset == "cifar10":
                 class_num = params.class_num_cifar10
@@ -38,9 +38,8 @@ class Model(interface.DenseModel):
                     reg_loss = 0.
                 loss_dict = {"cross_loss":cross_loss, "reg_loss":reg_loss}
 
-                with tf.device("/cpu:0"):
-                    acc_1 = tf.reduce_mean(tf.cast(tf.math.in_top_k(logits, lables, 1), tf.float32))
-                    acc_5 = tf.reduce_mean(tf.cast(tf.math.in_top_k(logits, lables, 5), tf.float32))
+                acc_1 = tf.reduce_mean(tf.cast(tf.math.in_top_k(logits, lables, 1), tf.float32))
+                acc_5 = tf.reduce_mean(tf.cast(tf.math.in_top_k(logits, lables, 5), tf.float32))
                 acc_dict = {"acc_top_1":acc_1, "acc_top_5":acc_5}
                 return loss_dict, acc_dict
 
@@ -52,7 +51,8 @@ class Model(interface.DenseModel):
     def get_parameters():
         params = tf.contrib.training.HParams(
             # model
-            blocks = [5, 5, 5],
+            blocks = [11, 11, 11],
+            growth_rate=12,
             class_num_cifar10 = 10,
             class_num_cifar100 = 100,
             reduction = 0.5,
