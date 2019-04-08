@@ -75,6 +75,7 @@ def default_parameters():
         decay_steps=100000,
         keep_checkpoint_max=1,
         keep_top_checkpoint_max=1,
+        batch_size=256,
         summary_steps=None,
         # Validation
         eval_steps=10000,

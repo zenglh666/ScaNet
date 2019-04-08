@@ -11,7 +11,7 @@ class DenseModel(object):
         self._scope = scope
         self._params = params
 
-    def dense_block(self, x, blocks, name):
+    def dense_block(self, x, blocks, growth_rate, name):
         """A dense block.
         Arguments:
             x: input tensor.
@@ -22,7 +22,7 @@ class DenseModel(object):
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             for i in range(blocks):
-                x = self.conv_block(x, 32, name=name + '_block' + str(i + 1))
+                x = self.conv_block(x, growth_rate, name=name + '_block' + str(i + 1))
         return x
 
 
@@ -66,7 +66,7 @@ class DenseModel(object):
         return x
 
 
-    def densenet(self, init_conv, blocks, input_tensor, reduction=0.5):
+    def densenet(self, init_conv, blocks, growth_rate, input_tensor, reduction=0.5):
         """Instantiates the DenseNet architecture.
         Arguments:
             blocks: numbers of building blocks for the four dense layers.
@@ -88,7 +88,7 @@ class DenseModel(object):
             x = tf.layers.max_pooling2d(x, pool_size=3, strides=2, padding='same')
 
         for i in range(len(blocks)):
-            x = self.dense_block(x, blocks[0], name='block_%s' % (i+1))
+            x = self.dense_block(x, blocks[0], growth_rate, name='block_%s' % (i+1))
             if i != len(blocks) - 1:
                 x = self.transition_block(x, reduction, name='transition_%d' % (i+1))
 
