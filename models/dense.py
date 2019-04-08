@@ -67,6 +67,7 @@ class Model(interface.BaseModel):
                 w_2_conv = tf.get_variable(name="w_2_conv", shape=[3, 3, x1.get_shape().as_list()[-1], growth_rate])
             else:
                 w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1], kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_1')
+                w_2_conv = tf.nn.relu(w_2_conv, name='_m_2_relu')
                 w_2_conv = tf.transpose(w_2_conv, [0, 1, 3, 2])
                 w_2_conv = tf.layers.conv2d(w_2_conv, growth_rate, kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_2')
 
@@ -133,8 +134,8 @@ class Model(interface.BaseModel):
                     memory_size = params.blocks_size * blocks_num * params.growth_rate
                 else:
                     memory_size = params.memory_size
-                with tf.variable_scope("memory", reuse=tf.AUTO_REUSE):
-                    memory = tf.get_variable(3, 3, memory_size, memory_size)
+                with tf.variable_scope("meta", reuse=tf.AUTO_REUSE, initializer=tf.initializers.random_uniform()):
+                    memory = tf.get_variable(name="memory", shape=[3, 3, memory_size, memory_size])
             else:
                 memory = None
 
