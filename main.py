@@ -69,7 +69,7 @@ def default_parameters():
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-8,
-        clip_grad_norm=0.,
+        clip_grad_norm=1.,
         learning_rate=1e-1,
         learning_rate_decay="exponential_decay",
         decay_steps=100000,

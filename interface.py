@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-class DenseModel(object):
+class BaseModel(object):
     """ Abstract object representing an NMT model """
 
     def __init__(self, params, scope):
