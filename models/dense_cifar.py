@@ -17,7 +17,7 @@ class Model(interface.DenseModel):
         params = self._params
         scope = self._scope
         with tf.variable_scope(scope, reuse=tf.AUTO_REUSE, initializer=initializer, regularizer=regularizer):
-            features = self.densenet(False, [params.blocks_size for b in params.blocks_num], params.growth_rate, images, params.reduction)
+            features = self.densenet(False, [params.blocks_size] * params.blocks_num, params.growth_rate, images, params.reduction)
 
             if params.dataset == "cifar10":
                 class_num = params.class_num_cifar10

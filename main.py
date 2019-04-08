@@ -157,7 +157,7 @@ def override_parameters(params, args):
 
     if params.dataset == "cifar10":
         params.input = os.path.join(params.data_dir, params.input1)
-    elif params.dataset == "cifa100":
+    elif params.dataset == "cifar100":
         params.input = os.path.join(params.data_dir, params.input2)
     elif params.dataset == "imagenet":
         params.input = os.path.join(params.data_dir, params.input3)

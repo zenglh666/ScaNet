@@ -36,10 +36,10 @@ class DenseModel(object):
             output tensor for the block.
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-            x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_0_bn')
-            x = tf.nn.relu(x, name='_0_relu')
+            x = tf.nn.relu(x, name='_relu')
             x = tf.layers.conv2d(x, int(x.get_shape().as_list()[-1] * reduction), kernel_size=1, padding='same', use_bias=False, name='_conv')
             x = tf.layers.average_pooling2d(x, pool_size=2, strides=2, padding="same", name='_avg_pool')
+            x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
         return x
 
 
@@ -53,14 +53,14 @@ class DenseModel(object):
             output tensor for the block.
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-            x1 = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_0_bn')
-            x1 = tf.nn.relu(x1, name='_0_relu')
+            x1 = tf.nn.relu(x, name='_0_relu')
             x1 = tf.layers.conv2d(x, 4 * growth_rate, kernel_size=1, padding='same', use_bias=False, name='_1_conv')
 
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
             x1 = tf.nn.relu(x1, name='_1_relu')
             w_2_conv = tf.get_variable(name="w_2_conv", shape=[3, 3, x1.get_shape().as_list()[-1], growth_rate])
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
+            x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
 
             x = tf.concat([x, x1], axis=-1, name='_concat')
         return x

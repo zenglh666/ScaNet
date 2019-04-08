@@ -85,7 +85,7 @@ def cifar(mode, params):
             ),
             tf.reshape(
                 tf.cast(
-                    tf.slice(record, [label_bytes - 1], [label_bytes]), 
+                    tf.slice(record, [label_bytes - 1], [1]), 
                     tf.int32), 
                 []
             )
