@@ -23,8 +23,7 @@ class Model(interface.BaseModel):
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             for i in range(blocks):
-                x = self.conv_block(x, growth_rate, name=name + '_block' + str(i + 1), memory=memory)
-                x = tf.layers.dropout(x, dropout)
+                x = self.conv_block(x, growth_rate, dropout, name=name + '_block' + str(i + 1), memory=memory)
         return x
 
 
@@ -47,7 +46,7 @@ class Model(interface.BaseModel):
         return x
 
 
-    def conv_block(self, x, growth_rate, name, memory=None):
+    def conv_block(self, x, growth_rate, dropout, name, memory=None):
         """A building block for a dense block.
         Arguments:
             x: input tensor.
@@ -59,6 +58,7 @@ class Model(interface.BaseModel):
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             x1 = tf.nn.relu(x, name='_0_relu')
             x1 = tf.layers.conv2d(x, 4 * growth_rate, kernel_size=1, padding='same', use_bias=False, name='_1_conv')
+            x1 = tf.layers.dropout(x1, dropout)
 
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
             x1 = tf.nn.relu(x1, name='_1_relu')
@@ -73,6 +73,7 @@ class Model(interface.BaseModel):
                 w_2_conv = tf.layers.conv2d(w_2_conv, growth_rate, kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_2')
 
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
+            x1 = tf.layers.dropout(x1, dropout)
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
 
             x = tf.concat([x, x1], axis=-1, name='_concat')
