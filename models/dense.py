@@ -12,7 +12,7 @@ class Model(interface.BaseModel):
     def __init__(self, params, scope="DenseModel"):
         super(Model, self).__init__(params=params, scope=scope)
 
-    def dense_block(self, x, blocks, growth_rate, dropout, name, training, memory=None):
+    def dense_block(self, x, blocks, growth_rate, dropout, training, name, memory=None):
         """A dense block.
         Arguments:
             x: input tensor.
@@ -171,7 +171,7 @@ class Model(interface.BaseModel):
     def get_parameters():
         params = tf.contrib.training.HParams(
             # model
-            blocks_size=11,
+            blocks_size=5,
             growth_rate=12,
             class_num_cifar10=10,
             class_num_cifar100=100,
