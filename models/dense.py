@@ -12,7 +12,7 @@ class Model(interface.BaseModel):
     def __init__(self, params, scope="DenseModel"):
         super(Model, self).__init__(params=params, scope=scope)
 
-    def dense_block(self, x, blocks, growth_rate, dropout, name, memory=None):
+    def dense_block(self, x, blocks, growth_rate, dropout, name, training, memory=None):
         """A dense block.
         Arguments:
             x: input tensor.
@@ -23,11 +23,11 @@ class Model(interface.BaseModel):
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             for i in range(blocks):
-                x = self.conv_block(x, growth_rate, dropout, name=name + '_block' + str(i + 1), memory=memory)
+                x = self.conv_block(x, growth_rate, dropout, training, name=name + '_block' + str(i + 1), memory=memory)
         return x
 
 
-    def transition_block(self, x, reduction, dropout, name):
+    def transition_block(self, x, reduction, dropout, training, name):
         """A transition block.
         Arguments:
             x: input tensor.
@@ -40,13 +40,13 @@ class Model(interface.BaseModel):
             x = tf.nn.relu(x, name='_relu')
             x = tf.layers.conv2d(x, int(x.get_shape().as_list()[-1] * reduction), 
                 kernel_size=1, padding='same', use_bias=False, name='_conv')
-            x = tf.layers.dropout(x, dropout)
+            x = tf.layers.dropout(x, dropout, training=training)
             x = tf.layers.average_pooling2d(x, pool_size=2, strides=2, padding="same", name='_avg_pool')
             x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
         return x
 
 
-    def conv_block(self, x, growth_rate, dropout, name, memory=None):
+    def conv_block(self, x, growth_rate, dropout, training, name, memory=None):
         """A building block for a dense block.
         Arguments:
             x: input tensor.
@@ -58,7 +58,7 @@ class Model(interface.BaseModel):
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
             x1 = tf.nn.relu(x, name='_0_relu')
             x1 = tf.layers.conv2d(x, 4 * growth_rate, kernel_size=1, padding='same', use_bias=False, name='_1_conv')
-            x1 = tf.layers.dropout(x1, dropout)
+            x1 = tf.layers.dropout(x1, dropout, training=training)
 
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
             x1 = tf.nn.relu(x1, name='_1_relu')
@@ -68,19 +68,18 @@ class Model(interface.BaseModel):
             else:
                 memory = tf.identity(memory)
                 w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1], kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_1')
-                w_2_conv = tf.nn.relu(w_2_conv, name='_m_2_relu')
                 w_2_conv = tf.transpose(w_2_conv, [0, 1, 3, 2])
                 w_2_conv = tf.layers.conv2d(w_2_conv, growth_rate, kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_2')
 
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
-            x1 = tf.layers.dropout(x1, dropout)
+            x1 = tf.layers.dropout(x1, dropout, training=training)
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
 
             x = tf.concat([x, x1], axis=-1, name='_concat')
         return x
 
 
-    def densenet(self, input_tensor, init_conv, blocks, growth_rate, reduction, dropout, memory=None):
+    def densenet(self, input_tensor, init_conv, blocks, growth_rate, reduction, dropout, training, memory=None):
         """Instantiates the DenseNet architecture.
         Arguments:
             blocks: numbers of building blocks for the four dense layers.
@@ -102,9 +101,9 @@ class Model(interface.BaseModel):
             x = tf.layers.max_pooling2d(x, pool_size=3, strides=2, padding='same')
 
         for i in range(len(blocks)):
-            x = self.dense_block(x, blocks[0], growth_rate, dropout, name='block_%s' % (i+1), memory=memory)
+            x = self.dense_block(x, blocks[0], growth_rate, dropout, training, name='block_%s' % (i+1), memory=memory)
             if i != len(blocks) - 1:
-                x = self.transition_block(x, reduction, dropout, name='transition_%d' % (i+1))
+                x = self.transition_block(x, reduction, dropout, training, name='transition_%d' % (i+1))
 
         x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
         x = tf.math.reduce_mean(x, axis=[1,2], name='_avg_pool')
@@ -142,7 +141,7 @@ class Model(interface.BaseModel):
                 memory = None
 
             features = self.densenet(images, init_conv, [params.blocks_size] * blocks_num, 
-                params.growth_rate, params.reduction, params.dropout, memory=memory)
+                params.growth_rate, params.reduction, params.dropout, mode=="train", memory=memory)
 
             logits = tf.layers.dense(features, class_num, use_bias=False)
 
