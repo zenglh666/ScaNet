@@ -42,8 +42,7 @@ class Model(interface.BaseModel):
                 kernel_size=1, padding='same', use_bias=False, name='_conv')
             x = tf.layers.dropout(x, dropout, training=training)
             x = tf.layers.average_pooling2d(x, pool_size=2, strides=2, padding="same", name='_avg_pool')
-            x = tf.contrib.layers.layer_norm(x, scope='_ln')
-            #x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
+            x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
         return x
 
 
@@ -61,8 +60,7 @@ class Model(interface.BaseModel):
             x1 = tf.layers.conv2d(x, 4 * growth_rate, kernel_size=1, padding='same', use_bias=False, name='_1_conv')
             x1 = tf.layers.dropout(x1, dropout, training=training)
 
-            x1 = tf.contrib.layers.layer_norm(x1, scope='_1_ln')
-            #x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
+            x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
             x1 = tf.nn.relu(x1, name='_1_relu')
 
             if memory is None:
@@ -75,8 +73,7 @@ class Model(interface.BaseModel):
 
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
             x1 = tf.layers.dropout(x1, dropout, training=training)
-            x1 = tf.contrib.layers.layer_norm(x1, scope='_2_bn')
-            #x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
+            x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
 
             x = tf.concat([x, x1], axis=-1, name='_concat')
         return x
@@ -98,8 +95,7 @@ class Model(interface.BaseModel):
         if init_conv:
             with tf.variable_scope("conv1", reuse=tf.AUTO_REUSE):
                 x = tf.layers.conv2d(x, 64, kernel_size=7, strides=2, padding='same', use_bias=False, name='conv')
-                x = tf.contrib.layers.layer_norm(x, scope='ln')
-                #x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
+                x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
                 x = tf.nn.relu(x, name='relu')
 
             x = tf.layers.max_pooling2d(x, pool_size=3, strides=2, padding='same')
@@ -109,8 +105,7 @@ class Model(interface.BaseModel):
             if i != len(blocks) - 1:
                 x = self.transition_block(x, reduction, dropout, training, name='transition_%d' % (i+1))
 
-        x = tf.contrib.layers.layer_norm(x, scope='ln')
-        #x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
+        x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
         x = tf.math.reduce_mean(x, axis=[1,2], name='_avg_pool')
 
         return x

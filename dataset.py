@@ -45,7 +45,7 @@ def preprocess_image_cifar(image, is_training):
         image = tf.image.random_flip_left_right(image)
 
         # Distort image color
-        image = distort_color(image)
+        #image = distort_color(image)
 
     # Subtract off the mean and divide by the variance of the pixels.
     image = tf.image.per_image_standardization(image)
