@@ -22,18 +22,30 @@ def get_train_eval_input(mode, params):
         raise ValueError('unable to recognize dataset %s' % params.dataset)
 
 
+def distort_color(image):
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+    return image
+
 def preprocess_image_cifar(image, is_training):
     """Preprocess a single image of layout [height, width, depth]."""
     if is_training:
-        # Resize the image to add four extra pixels on each side.
-        image = tf.image.resize_image_with_crop_or_pad(
-            image, 40, 40)
+        # convert image type
+        image = tf.image.convert_image_dtype(image, tf.float32)
+
+        # Resize the image
+        image = tf.image.resize_images(image, [40, 40])
 
         # Randomly crop a [HEIGHT, WIDTH] section of the image.
         image = tf.image.random_crop(image, [32, 32, 3])
 
         # Randomly flip the image horizontally.
         image = tf.image.random_flip_left_right(image)
+
+        # Distort image color
+        image = distort_color(image)
 
     # Subtract off the mean and divide by the variance of the pixels.
     image = tf.image.per_image_standardization(image)
