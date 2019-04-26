@@ -31,12 +31,13 @@ def distort_color(image):
 
 def preprocess_image_cifar(image, is_training):
     """Preprocess a single image of layout [height, width, depth]."""
-    if is_training:
-        # convert image type
-        image = tf.image.convert_image_dtype(image, tf.float32)
+    # convert image type
+    image = tf.image.convert_image_dtype(image, tf.float32)
 
+    if is_training:
         # Resize the image
-        image = tf.image.resize_images(image, [40, 40])
+        # image = tf.image.resize_image_with_crop_or_pad(image, 36, 36)
+        image = tf.image.resize_images(image, [36, 36])
 
         # Randomly crop a [HEIGHT, WIDTH] section of the image.
         image = tf.image.random_crop(image, [32, 32, 3])
@@ -45,7 +46,13 @@ def preprocess_image_cifar(image, is_training):
         image = tf.image.random_flip_left_right(image)
 
         # Distort image color
-        #image = distort_color(image)
+        image = distort_color(image)
+    else:
+        # Resize the image
+        image = tf.image.resize_images(image, [36, 36])
+
+        # Centrel crop a [HEIGHT, WIDTH] section of the image.
+        image = tf.image.resize_image_with_crop_or_pad(image, 32, 32)
 
     # Subtract off the mean and divide by the variance of the pixels.
     image = tf.image.per_image_standardization(image)

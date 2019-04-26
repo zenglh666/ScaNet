@@ -68,8 +68,10 @@ class Model(interface.BaseModel):
             else:
                 memory = tf.identity(memory)
                 w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1], kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_1')
+                w_2_conv = tf.math.tanh(w_2_conv, name='_m_2_tanh1')
                 w_2_conv = tf.transpose(w_2_conv, [0, 1, 3, 2])
                 w_2_conv = tf.layers.conv2d(w_2_conv, growth_rate, kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_2')
+                w_2_conv = tf.math.tanh(w_2_conv, name='_m_2_tanh2')
 
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
             x1 = tf.layers.dropout(x1, dropout, training=training)
@@ -131,7 +133,7 @@ class Model(interface.BaseModel):
                 raise ValueError("Unable to Recognize dataset: %s" % params.dataset)
 
             if params.use_memory:
-                if params.memory_size is None:
+                if params.memory_size <= 0:
                     memory_size = params.blocks_size * blocks_num * params.growth_rate
                 else:
                     memory_size = params.memory_size
@@ -153,7 +155,7 @@ class Model(interface.BaseModel):
                     reg_loss_list = []
                     for var in tf.trainable_variables():
                         reg_loss_list.append(tf.nn.l2_loss(var))
-                    reg_loss = params.scale_l2 * tf.add_n(reg_loss_list, name="reg_loss")
+                    reg_loss = tf.add_n(reg_loss_list, name="reg_loss") * params.scale_l2 / float(params.gpu_num)
                 else:
                     reg_loss = 0.
                 loss_dict = {"cross_loss":cross_loss, "reg_loss":reg_loss}
@@ -185,7 +187,7 @@ class Model(interface.BaseModel):
             eval_steps=6000,
             dropout=0.2,
             use_memory=False,
-            memory_size=None
+            memory_size=0
         )
 
         return params

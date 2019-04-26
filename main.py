@@ -232,6 +232,7 @@ def run_config(params):
             raise RuntimeError("No availiable Gpus!!!")
     else:
         device_str = ",".join([str(i + params.gpu_shift) for i in range(params.gpu_num)])
+        params.gpu_num = len(device_str)
     gpu_options=tf.GPUOptions(allow_growth=True, visible_device_list=device_str)
 
     session_config = tf.ConfigProto(
