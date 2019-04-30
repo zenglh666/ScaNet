@@ -181,13 +181,4 @@ class Model(interface.BaseModel):
             reduction=0.5,
             batch_size=256,
             scale_l1=0.0,
-            scale_l2=1e-4,
-            train_steps=180000,
-            decay_steps=60000,
-            eval_steps=6000,
-            dropout=0.2,
-            use_memory=False,
-            memory_size=0
-        )
-
-        return params
+            scale
