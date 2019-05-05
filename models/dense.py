@@ -59,19 +59,16 @@ class Model(interface.BaseModel):
             x1 = tf.nn.relu(x, name='_0_relu')
             x1 = tf.layers.conv2d(x, 4 * growth_rate, kernel_size=1, padding='same', use_bias=False, name='_1_conv')
             x1 = tf.layers.dropout(x1, dropout, training=training)
-
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
             x1 = tf.nn.relu(x1, name='_1_relu')
 
             if memory is None:
                 w_2_conv = tf.get_variable(name="w_2_conv", shape=[3, 3, x1.get_shape().as_list()[-1], growth_rate])
             else:
-                memory = tf.identity(memory)
-                w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1], kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_1')
-                w_2_conv = tf.math.tanh(w_2_conv, name='_m_2_tanh1')
-                w_2_conv = tf.transpose(w_2_conv, [0, 1, 3, 2])
-                w_2_conv = tf.layers.conv2d(w_2_conv, growth_rate, kernel_size=1, padding='same', use_bias=False, name='_m_2_conv_2')
-                w_2_conv = tf.math.tanh(w_2_conv, name='_m_2_tanh2')
+                w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1] * growth_rate, kernel_size=1, 
+                    padding='same', use_bias=True, name='_m_2_conv1')
+                w_2_conv = tf.nn.tanh(w_2_conv, name='_m_2_act1')
+                w_2_conv = tf.reshape(w_2_conv, [3, 3, x1.get_shape().as_list()[-1], growth_rate])
 
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
             x1 = tf.layers.dropout(x1, dropout, training=training)
@@ -138,7 +135,8 @@ class Model(interface.BaseModel):
                 else:
                     memory_size = params.memory_size
 
-                memory = tf.get_variable(name="memory", shape=[3, 3, memory_size, memory_size])
+                memory = tf.get_variable(name="memory", shape=[1, 3, 3, memory_size])
+                memory = tf.layers.dropout(memory, params.dropout, training=mode=="train")
             else:
                 memory = None
 
@@ -153,9 +151,9 @@ class Model(interface.BaseModel):
                 cross_loss = tf.losses.sparse_softmax_cross_entropy(lables, logits)
                 if params.scale_l2 > 0.:
                     reg_loss_list = []
-                    for var in tf.trainable_variables():
+                    for var in tf.get_variable_scope().trainable_variables():
                         reg_loss_list.append(tf.nn.l2_loss(var))
-                    reg_loss = tf.add_n(reg_loss_list, name="reg_loss") * params.scale_l2 / float(params.gpu_num)
+                    reg_loss = tf.add_n(reg_loss_list, name="reg_loss") * params.scale_l2
                 else:
                     reg_loss = 0.
                 loss_dict = {"cross_loss":cross_loss, "reg_loss":reg_loss}
@@ -179,6 +177,15 @@ class Model(interface.BaseModel):
             class_num_cifar100=100,
             class_num_imagenet=1000,
             reduction=0.5,
-            batch_size=256,
+            batch_size=64,
             scale_l1=0.0,
-            scale
+            scale_l2=0.0001,
+            train_steps=180000,
+            decay_steps=60000,
+            eval_steps=6000,
+            dropout=0.2,
+            use_memory=False,
+            memory_size=0,
+        )
+
+        return params
