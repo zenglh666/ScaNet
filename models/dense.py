@@ -136,7 +136,8 @@ class Model(interface.BaseModel):
                     memory_size = params.memory_size
 
                 memory = tf.get_variable(name="memory", shape=[1, 3, 3, memory_size])
-                memory = tf.layers.dropout(memory, params.dropout, training=mode=="train")
+                if params.mem_drop > 0.:
+                    memory = tf.layers.dropout(memory, params.mem_drop, training=mode=="train")
             else:
                 memory = None
 
@@ -186,6 +187,7 @@ class Model(interface.BaseModel):
             dropout=0.2,
             use_memory=False,
             memory_size=0,
+            mem_drop=0.0,
         )
 
         return params
