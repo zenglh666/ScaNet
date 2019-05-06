@@ -77,6 +77,7 @@ def default_parameters():
         keep_top_checkpoint_max=1,
         batch_size=256,
         summary_steps=None,
+        distort_color=False,
         # Validation
         eval_steps=10000,
         infer_in_validation=False,
@@ -232,7 +233,6 @@ def run_config(params):
             raise RuntimeError("No availiable Gpus!!!")
     else:
         device_str = ",".join([str(i + params.gpu_shift) for i in range(params.gpu_num)])
-        params.gpu_num = len(device_str)
     gpu_options=tf.GPUOptions(allow_growth=True, visible_device_list=device_str)
 
     session_config = tf.ConfigProto(
@@ -250,7 +250,7 @@ def run_config(params):
         train_distribute=tf.contrib.distribute.MirroredStrategy(),
         eval_distribute=tf.contrib.distribute.MirroredStrategy()
     )
-    return run_config
+    return run_config, len(device_str)
 
 def print_parameters():
     all_weights = {v.name: v for v in tf.trainable_variables()}
@@ -337,7 +337,8 @@ def main(args):
     log.addHandler(fh)
 
     # Build Estimator
-    config = run_config(params)
+    config, gpu_num = run_config(params)
+    params.gpu_num = gpu_num
     estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=params.output, params=params, config=config)
 
     # Build input
@@ -352,4 +353,3 @@ def main(args):
 
 if __name__ == "__main__":
     main(parse_args())
-              

@@ -29,7 +29,7 @@ def distort_color(image):
     image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
     return image
 
-def preprocess_image_cifar(image, is_training):
+def preprocess_image_cifar(image, is_training, is_distorting):
     """Preprocess a single image of layout [height, width, depth]."""
     # convert image type
     image = tf.image.convert_image_dtype(image, tf.float32)
@@ -37,7 +37,6 @@ def preprocess_image_cifar(image, is_training):
     if is_training:
         # Resize the image
         image = tf.image.resize_image_with_crop_or_pad(image, 40, 40)
-        # image = tf.image.resize_images(image, [36, 36])
 
         # Randomly crop a [HEIGHT, WIDTH] section of the image.
         image = tf.image.random_crop(image, [32, 32, 3])
@@ -46,17 +45,16 @@ def preprocess_image_cifar(image, is_training):
         image = tf.image.random_flip_left_right(image)
 
         # Distort image color
-        # image = distort_color(image)
-    else:
-        # Resize the image
-        # image = tf.image.resize_images(image, [36, 36])
-
-        # Centrel crop a [HEIGHT, WIDTH] section of the image.
-        # image = tf.image.resize_image_with_crop_or_pad(image, 32, 32)
-        pass
+        if is_distorting:
+            image = distort_color(image)
 
     # Subtract off the mean and divide by the variance of the pixels.
-    image = tf.image.per_image_standardization(image)
+    mean = tf.constant([0.4913997551666284, 0.48215855929893703, 0.4465309133731618], dtype=np.float32)
+    std = tf.constant([0.24703225141799082, 0.24348516474564, 0.26158783926049628], dtype=np.float32)
+    mean = tf.reshape(mean, [1, 1, 3])
+    std = tf.reshape(std, [1, 1, 3])
+    image = (image - mean) / std
+    #image = tf.image.per_image_standardization(image)
     return image
 
 def cifar(mode, params):
@@ -120,7 +118,7 @@ def cifar(mode, params):
 
     dataset = dataset.map(
         lambda image, label: (
-            preprocess_image_cifar(image, mode=="train"),
+            preprocess_image_cifar(image, mode=="train", params.distort_color),
             label
         )
     )
