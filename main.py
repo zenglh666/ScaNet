@@ -66,6 +66,7 @@ def default_parameters():
         train_steps=300000,
         log_steps=100,
         optimizer="Mom",
+        use_nesterov=False,
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-8,
@@ -77,7 +78,7 @@ def default_parameters():
         keep_top_checkpoint_max=1,
         batch_size=256,
         summary_steps=None,
-        distort_color=False,
+        no_distort=False,
         # Validation
         eval_steps=10000,
         infer_in_validation=False,
@@ -207,7 +208,7 @@ def get_optimizer(learning_rate, params):
                                                beta2=params.adam_beta2,
                                                epsilon=params.adam_epsilon)
     elif params.optimizer == "Mom":
-        opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
+        opt = tf.train.MomentumOptimizer(learning_rate, 0.9, use_nesterov=params.use_nesterov)
     elif params.optimizer == "Sgd":
         opt = tf.train.GradientDescentOptimizer(learning_rate)
     else:
@@ -347,7 +348,7 @@ def main(args):
 
     # train and eval
     train_spec = tf.estimator.TrainSpec(input_fn=input_fn_train, max_steps=params.train_steps)
-    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_val)
+    eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_val, steps=None, throttle_secs=60)
     tf.estimator.train_and_evaluate(estimator=estimator, train_spec=train_spec, eval_spec=eval_spec)
 
 
