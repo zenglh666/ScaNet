@@ -65,7 +65,7 @@ class Model(interface.BaseModel):
                 w_2_conv = tf.get_variable(name="w_2_conv", shape=[3, 3, x1.get_shape().as_list()[-1], growth_rate])
             else:
                 w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1] * growth_rate, kernel_size=1, 
-                    padding='same', use_bias=True, name='_m_2_conv1')
+                    padding='same', use_bias=False, name='_m_2_conv1')
                 w_2_conv = tf.nn.tanh(w_2_conv, name='_m_2_act1')
                 w_2_conv = tf.reshape(w_2_conv, [3, 3, x1.get_shape().as_list()[-1], growth_rate])
 
@@ -155,7 +155,7 @@ class Model(interface.BaseModel):
                     reg_loss_list = []
                     ignore_list = []
                     for var in scope.trainable_variables():
-                        if 'gamma' not in var.name:
+                        if 'gamma' not in var.name and 'beta' not in var.name:
                             reg_loss_list.append(tf.nn.l2_loss(var))
                         else:
                             ignore_list.append(var)
