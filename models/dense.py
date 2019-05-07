@@ -37,12 +37,12 @@ class Model(interface.BaseModel):
             output tensor for the block.
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-            x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
-            x = tf.nn.relu(x, name='_relu')
             x = tf.layers.dropout(x, dropout, training=training)
             x = tf.layers.conv2d(x, int(x.get_shape().as_list()[-1] * reduction), 
                 kernel_size=1, padding='same', use_bias=False, name='_conv')
-            x = tf.layers.average_pooling2d(x, pool_size=2, strides=2, padding="valid", name='_pool')
+            x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
+            x = tf.nn.relu(x, name='_relu')
+            x = tf.layers.max_pooling2d(x, pool_size=2, strides=2, padding="valid", name='_pool')
         return x
 
 
@@ -56,9 +56,7 @@ class Model(interface.BaseModel):
             output tensor for the block.
         """
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-            x1 = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_2_bn')
-            x1 = tf.nn.relu(x1, name='_2_relu')
-            x1 = tf.layers.dropout(x1, dropout, training=training)
+            x1 = tf.layers.dropout(x, dropout, training=training)
             x1 = tf.layers.conv2d(x1, 4 * growth_rate, kernel_size=1, padding='same', use_bias=False, name='_1_conv')
             x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_1_bn')
             x1 = tf.nn.relu(x1, name='_1_relu')
@@ -72,6 +70,9 @@ class Model(interface.BaseModel):
                 w_2_conv = tf.reshape(w_2_conv, [3, 3, x1.get_shape().as_list()[-1], growth_rate])
 
             x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
+            x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
+            x1 = tf.nn.relu(x1, name='_2_relu')
+
             x = tf.concat([x, x1], axis=-1, name='_concat')
         return x
 
@@ -99,14 +100,14 @@ class Model(interface.BaseModel):
         else:
             with tf.variable_scope("conv1", reuse=tf.AUTO_REUSE):
                 x = tf.layers.conv2d(x, 64, kernel_size=3,  padding='same', use_bias=False, name='conv')
+                x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
+                x = tf.nn.relu(x, name='relu')
 
         for i in range(len(blocks)):
             x = self.dense_block(x, blocks[0], growth_rate, dropout, training, name='block_%s' % (i+1), memory=memory)
             if i != len(blocks) - 1:
                 x = self.transition_block(x, reduction, dropout, training, name='transition_%d' % (i+1))
 
-        x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='bn')
-        x = tf.nn.relu(x, name='relu')
         x = tf.math.reduce_mean(x, axis=[1,2], name='_avg_pool')
 
         return x
@@ -114,8 +115,7 @@ class Model(interface.BaseModel):
     def model_func(self, images, lables, mode, initializer=None, regularizer=None):
         # Create model.
         params = self._params
-        scope = self._scope
-        with tf.variable_scope(scope, reuse=tf.AUTO_REUSE, initializer=initializer, regularizer=regularizer):
+        with tf.variable_scope(self._scope, reuse=tf.AUTO_REUSE, initializer=initializer, regularizer=regularizer) as scope:
             if params.dataset == "cifar10":
                 class_num = params.class_num_cifar10
                 init_stride = False
@@ -153,8 +153,12 @@ class Model(interface.BaseModel):
                 cross_loss = tf.losses.sparse_softmax_cross_entropy(lables, logits)
                 if params.scale_l2 > 0.:
                     reg_loss_list = []
-                    for var in tf.get_variable_scope().trainable_variables():
-                        reg_loss_list.append(tf.nn.l2_loss(var))
+                    ignore_list = []
+                    for var in scope.trainable_variables():
+                        if 'gamma' not in var.name:
+                            reg_loss_list.append(tf.nn.l2_loss(var))
+                        else:
+                            ignore_list.append(var)
                     reg_loss = tf.add_n(reg_loss_list, name="reg_loss") * params.scale_l2
                 else:
                     reg_loss = 0.
@@ -189,6 +193,7 @@ class Model(interface.BaseModel):
             use_memory=False,
             memory_size=0,
             mem_drop=0.0,
+            use_nesterov=True,
         )
 
         return params
