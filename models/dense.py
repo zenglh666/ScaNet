@@ -40,9 +40,9 @@ class Model(interface.BaseModel):
             x = tf.layers.dropout(x, dropout, training=training)
             x = tf.layers.conv2d(x, int(x.get_shape().as_list()[-1] * reduction), 
                 kernel_size=1, padding='same', use_bias=False, name='_conv')
-            x = tf.layers.average_pooling2d(x, pool_size=2, strides=2, padding="valid", name='_pool')
             x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
             x = tf.nn.relu(x, name='_relu')
+            x = tf.layers.max_pooling2d(x, pool_size=2, strides=2, padding="valid", name='_pool')
         return x
 
 
