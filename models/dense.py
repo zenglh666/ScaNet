@@ -155,7 +155,7 @@ class Model(interface.BaseModel):
                     reg_loss_list = []
                     ignore_list = []
                     for var in scope.trainable_variables():
-                        if 'gamma' not in var.name and 'beta' not in var.name:
+                        if 'gamma' not in var.name:
                             reg_loss_list.append(tf.nn.l2_loss(var))
                         else:
                             ignore_list.append(var)
