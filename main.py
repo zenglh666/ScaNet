@@ -54,12 +54,12 @@ def default_parameters():
         log_id= "",
         restore_params=False,
         # Default dataset hyper parameters
-        pre_fetch=32,
-        buffer_size=1024,
+        pre_fetch=8,
+        buffer_size=16384,
         # Default training hyper parameters
         gpu_num=0,
         gpu_shift=0,
-        initializer="uniform_unit_scaling",
+        initializer="normal_unit_scaling",
         initializer_gain=1.0,
         scale_l1=0.0,
         scale_l2=0.0,
@@ -70,7 +70,7 @@ def default_parameters():
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-8,
-        clip_grad_norm=1.,
+        clip_grad_norm=0.,
         learning_rate=1e-1,
         learning_rate_decay="exponential_decay",
         decay_steps=100000,
@@ -176,11 +176,9 @@ def get_initializer(params):
         return tf.random_normal_initializer(0.0, params.initializer_gain)
     elif params.initializer == "normal_unit_scaling":
         return tf.variance_scaling_initializer(params.initializer_gain,
-                                               mode="fan_avg",
                                                distribution="normal")
     elif params.initializer == "uniform_unit_scaling":
         return tf.variance_scaling_initializer(params.initializer_gain,
-                                               mode="fan_avg",
                                                distribution="uniform")
     else:
         raise ValueError("Unrecognized initializer: %s" % params.initializer)
@@ -228,9 +226,8 @@ def run_config(params):
     )
 
     if params.gpu_num <= 0:
-        if tf.test.is_gpu_available(cuda_only=True):
-            device_str = ",".join([x.name[-1] for x in device_lib.list_local_devices() if x.device_type == 'GPU'])
-        else:
+        device_str = ",".join([x.name[-1] for x in device_lib.list_local_devices() if x.device_type == 'GPU'])
+        if len(device_str) == 0:
             raise RuntimeError("No availiable Gpus!!!")
     else:
         device_str = ",".join([str(i + params.gpu_shift) for i in range(params.gpu_num)])
@@ -268,35 +265,39 @@ def print_parameters():
 def model_fn(features, labels, mode, params):
     with tf.variable_scope("model", reuse=tf.AUTO_REUSE):
         images = features
-        initializer = get_initializer(params)
-        # Create global step
-        global_step = tf.train.get_or_create_global_step()
-
-        # Create optimizer
-        learning_rate = get_learning_rate_decay(params.learning_rate, global_step, params)
-        opt = get_optimizer(learning_rate, params)
-        if params.clip_grad_norm > 0.:
-            opt = tf.contrib.estimator.clip_gradients_by_norm(opt, params.clip_grad_norm)
-        opt = tf.contrib.estimator.TowerOptimizer(opt)
-
         # Create model
         model_cls = models.get_model(params.model)
         model = model_cls(params)
+
         if mode == tf.estimator.ModeKeys.TRAIN:
+            initializer = get_initializer(params)
             losses_dict, acc_dict = model.model_func(images, labels, mode="train", initializer=initializer)
+
+            # Create global step
+            global_step = tf.train.get_or_create_global_step()
+
+            # Create optimizer
+            learning_rate = get_learning_rate_decay(params.learning_rate, global_step, params)
+            opt = get_optimizer(learning_rate, params)
+            if params.clip_grad_norm > 0.:
+                opt = tf.contrib.estimator.clip_gradients_by_norm(opt, params.clip_grad_norm)
+
             loss = tf.add_n([v for v in losses_dict.values()], name="loss")
             ops = opt.minimize(loss, global_step)
 
             logging_dict = {}
             logging_dict.update(losses_dict)
             logging_dict.update(acc_dict)
+
             with tf.device("/cpu:0"):
                 for k,v in logging_dict.items():
                     tf.summary.scalar(k, v)
+
             return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=ops)
         elif mode == tf.estimator.ModeKeys.EVAL:
             losses_dict, acc_dict = model.model_func(images, labels, mode="eval")
             loss = tf.add_n([v for v in losses_dict.values()], name="loss")
+
             metric_dict = {}
             for k, v in losses_dict.items():
                 metric_dict[k] = tf.metrics.mean(v)

@@ -46,7 +46,8 @@ def preprocess_image_cifar(image, is_training, is_distorting):
 
 
     # Subtract off the mean and divide by the variance of the pixels.
-    image = tf.image.per_image_standardization(image)
+    # image = tf.image.per_image_standardization(image)
+    image = image - 0.5
     return image
 
 def cifar(mode, params):
