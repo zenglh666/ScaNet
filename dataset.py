@@ -10,7 +10,7 @@ import math
 import numpy as np
 import tensorflow as tf
 import sys
-import os 
+import os
 
 def get_train_eval_input(mode, params):
     if params.dataset == "cifar10" or params.dataset == "cifar100":
@@ -29,12 +29,12 @@ def distort_color(image):
     image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
     return image
 
-def preprocess_image_cifar(image, is_training, is_distorting):
+def preprocess_image_cifar(image, is_training):
     """Preprocess a single image of layout [height, width, depth]."""
     # convert image type
     image = tf.image.convert_image_dtype(image, tf.float32)
 
-    if is_training and is_distorting:
+    if is_training:
         # Resize the image
         image = tf.image.resize_image_with_crop_or_pad(image, 40, 40)
 
@@ -47,7 +47,6 @@ def preprocess_image_cifar(image, is_training, is_distorting):
 
     # Subtract off the mean and divide by the variance of the pixels.
     image = tf.image.per_image_standardization(image)
-    # image = image - 0.5
     return image
 
 def cifar(mode, params):
@@ -111,7 +110,7 @@ def cifar(mode, params):
 
     dataset = dataset.map(
         lambda image, label: (
-            preprocess_image_cifar(image, mode=="train", not params.no_distort),
+            preprocess_image_cifar(image, mode=="train"),
             label
         )
     )

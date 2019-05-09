@@ -10,9 +10,9 @@ from datetime import datetime
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.client import device_lib
 import dataset
 import models
+from tensorflow.python.client import device_lib
 
 
 def parse_args(args=None):
@@ -42,6 +42,7 @@ def parse_args(args=None):
 
 def default_parameters():
     params = tf.contrib.training.HParams(
+        # Default Path and Name
         dataset="",
         data_dir="/data/zenglh/data",
         input1="cifar/cifar10/cifar-10-batches-bin",
@@ -52,60 +53,42 @@ def default_parameters():
         model="",
         job_id = "",
         log_id= "",
-        restore_params=False,
-        # Default dataset hyper parameters
+        # Default hyper parameters
         pre_fetch=8,
-        buffer_size=16384,
+        buffer_size=8192,
+        log_steps=100,
+        class_num=None,
+        class_num_cifar10=10,
+        class_num_cifar100=100,
+        class_num_imagenet=1000,
         # Default training hyper parameters
-        gpu_num=0,
-        gpu_shift=0,
         initializer="normal_unit_scaling",
         initializer_gain=1.0,
+        batch_size=256,
+        gpu_num=0,
         scale_l1=0.0,
         scale_l2=0.0,
-        train_steps=300000,
-        log_steps=100,
+        # Default Optimier hyper parameters
         optimizer="Mom",
         use_nesterov=False,
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-8,
         clip_grad_norm=0.,
+        # Default Learning rate hyper parameters
         learning_rate=1e-1,
         learning_rate_decay="exponential_decay",
+        train_steps=300000,
         decay_steps=100000,
+        # Default Check Point hyper parameters
         keep_checkpoint_max=1,
         keep_top_checkpoint_max=1,
-        batch_size=256,
-        summary_steps=None,
-        no_distort=False,
-        # Validation
+        summary_steps=1e10,
+        # Default Validation hyper parameters
         eval_steps=10000,
         infer_in_validation=False,
     )
     return params
-
-
-def import_params(model_dir, model_name, params):
-    model_dir = os.path.abspath(model_dir)
-    p_name = os.path.join(model_dir, "params.json")
-    m_name = os.path.join(model_dir, model_name + ".json")
-
-    if not tf.gfile.Exists(p_name) or not tf.gfile.Exists(m_name):
-        return params
-
-    with tf.gfile.Open(p_name) as fd:
-        tf.logging.info("Restoring hyper parameters from %s" % p_name)
-        json_str = fd.readline()
-        params.parse_json(json_str)
-
-    with tf.gfile.Open(m_name) as fd:
-        tf.logging.info("Restoring model parameters from %s" % m_name)
-        json_str = fd.readline()
-        params.parse_json(json_str)
-
-    return params
-
 
 def export_params(output_dir, name, params):
     if not tf.gfile.Exists(output_dir):
@@ -115,16 +98,6 @@ def export_params(output_dir, name, params):
     filename = os.path.join(output_dir, name)
     with tf.gfile.Open(filename, "w") as fd:
         fd.write(params.to_json())
-
-
-def collect_params(all_params, params):
-    collected = tf.contrib.training.HParams()
-
-    for k in params.values().keys():
-        collected.add_hparam(k, getattr(all_params, k))
-
-    return collected
-
 
 def merge_parameters(params1, params2):
     params = tf.contrib.training.HParams()
@@ -159,12 +132,22 @@ def override_parameters(params, args):
 
     if params.dataset == "cifar10":
         params.input = os.path.join(params.data_dir, params.input1)
+        params.class_num = params.class_num or params.class_num_cifar10
     elif params.dataset == "cifar100":
         params.input = os.path.join(params.data_dir, params.input2)
+        params.class_num = params.class_num or params.class_num_cifar100
     elif params.dataset == "imagenet":
         params.input = os.path.join(params.data_dir, params.input3)
+        params.class_num = params.class_num or params.class_num_imagenet
     else:
         raise ValueError("Unrecognized dataset: %s" % params.dataset)
+
+    if params.gpu_num == 0:
+        local_device_protos = device_lib.list_local_devices()
+        for x in local_device_protos:
+            if x.device_type == 'GPU':
+                params.gpu_num += 1
+
     return params
 
 
@@ -176,7 +159,7 @@ def get_initializer(params):
         return tf.random_normal_initializer(0.0, params.initializer_gain)
     elif params.initializer == "normal_unit_scaling":
         return tf.variance_scaling_initializer(params.initializer_gain,
-                                               distribution="normal")
+                                               distribution="truncated_normal")
     elif params.initializer == "uniform_unit_scaling":
         return tf.variance_scaling_initializer(params.initializer_gain,
                                                distribution="uniform")
@@ -225,13 +208,7 @@ def run_config(params):
         build_cost_model=0
     )
 
-    if params.gpu_num <= 0:
-        device_str = ",".join([x.name[-1] for x in device_lib.list_local_devices() if x.device_type == 'GPU'])
-        if len(device_str) == 0:
-            raise RuntimeError("No availiable Gpus!!!")
-    else:
-        device_str = ",".join([str(i + params.gpu_shift) for i in range(params.gpu_num)])
-    gpu_options=tf.GPUOptions(allow_growth=True, visible_device_list=device_str)
+    gpu_options=tf.GPUOptions(allow_growth=True)
 
     session_config = tf.ConfigProto(
         allow_soft_placement=True,
@@ -248,7 +225,7 @@ def run_config(params):
         train_distribute=tf.contrib.distribute.MirroredStrategy(),
         eval_distribute=tf.contrib.distribute.MirroredStrategy()
     )
-    return run_config, len(device_str)
+    return run_config
 
 def print_parameters():
     all_weights = {v.name: v for v in tf.trainable_variables()}
@@ -319,17 +296,10 @@ def main(args):
     # Priorities (low -> high):
     # default -> saved -> command
     params = merge_parameters(params, model_cls.get_parameters())
-    if params.restore_params:
-    	params = import_params(args.output, args.model, params)
     override_parameters(params, args)
 
     # Export all parameters and model specific parameters
     export_params(params.output, "params.json", params)
-    export_params(
-        params.output,
-        "%s.json" % args.model,
-        collect_params(params, model_cls.get_parameters())
-    )
 
     log = logging.getLogger('tensorflow')
     formatter = logging.Formatter('%(asctime)s - %(name)s:%(message)s')
@@ -339,8 +309,7 @@ def main(args):
     log.addHandler(fh)
 
     # Build Estimator
-    config, gpu_num = run_config(params)
-    params.gpu_num = gpu_num
+    config = run_config(params)
     estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=params.output, params=params, config=config)
 
     # Build input
