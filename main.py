@@ -215,6 +215,8 @@ def run_config(params):
         graph_options=graph_options,
         gpu_options=gpu_options)
 
+    mirrored_strategy = tf.distribute.MirroredStrategy()
+
     run_config = tf.estimator.RunConfig(
         model_dir=params.output,
         save_summary_steps=params.summary_steps,
@@ -222,8 +224,8 @@ def run_config(params):
         keep_checkpoint_max=1,
         log_step_count_steps=params.log_steps,
         session_config=session_config,
-        train_distribute=tf.contrib.distribute.MirroredStrategy(),
-        eval_distribute=tf.contrib.distribute.MirroredStrategy()
+        train_distribute=mirrored_strategy,
+        eval_distribute=mirrored_strategy
     )
     return run_config
 
