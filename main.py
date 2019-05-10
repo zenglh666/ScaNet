@@ -168,12 +168,12 @@ def get_initializer(params):
         raise ValueError("Unrecognized initializer: %s" % params.initializer)
 
 
-def get_learning_rate_decay(learning_rate, global_step, params):
+def get_learning_rate_decay(global_step, params):
     if params.learning_rate_decay == "exponential_decay":
-        return tf.train.exponential_decay(learning_rate, global_step, 
+        return tf.train.exponential_decay(params.learning_rate, global_step, 
             params.decay_steps, decay_rate=0.1, staircase=True)
     elif params.learning_rate_decay == "none":
-        return tf.convert_to_tensor(learning_rate, dtype=tf.float32)
+        return tf.convert_to_tensor(params.learning_rate, dtype=tf.float32)
     else:
         raise ValueError("Unrecognized learning_rate_decay: %s" % params.learning_rate_decay)
 
@@ -216,7 +216,7 @@ def run_config(params):
         graph_options=graph_options,
         gpu_options=gpu_options)
 
-    mirrored_strategy = tf.contrib.distribute.MirroredStrategy()
+    mirrored_strategy = tf.contrib.distribute.MirroredStrategy(num_gpus=params.gpu_num)
 
     run_config = tf.estimator.RunConfig(
         model_dir=params.output,
@@ -257,7 +257,7 @@ def model_fn(features, labels, mode, params):
             global_step = tf.train.get_or_create_global_step()
 
             # Create optimizer
-            learning_rate = get_learning_rate_decay(params.learning_rate, global_step, params)
+            learning_rate = get_learning_rate_decay(global_step, params)
             opt = get_optimizer(learning_rate, params)
             if params.clip_grad_norm > 0.:
                 opt = tf.contrib.estimator.clip_gradients_by_norm(opt, params.clip_grad_norm)
@@ -298,7 +298,7 @@ def main(args):
     # Import and override parameters
     # Priorities (low -> high):
     # default -> saved -> command
-    params = merge_parameters(params, model_cls.get_parameters(params))
+    params = merge_parameters(params, model_cls.get_parameters(args.dataset))
     override_parameters(params, args)
 
     # Export all parameters and model specific parameters

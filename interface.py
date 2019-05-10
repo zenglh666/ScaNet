@@ -18,9 +18,9 @@ class BaseModel(object):
         """
         raise NotImplementedError("Not implemented")
 
-    def model_func(self, images, lables, mode, initializer=None, regularizer=None):
+    def model_func(self, images, lables, mode, params=None, initializer=None, regularizer=None):
         # Create model.
-        params = self._params
+        params = params or self._params
         with tf.variable_scope(self._scope, reuse=tf.AUTO_REUSE, initializer=initializer, regularizer=regularizer) as scope:
             if params.use_memory:
                 if params.memory_size <= 0:
@@ -65,7 +65,7 @@ class BaseModel(object):
         raise NotImplementedError("Not implemented")
 
     @staticmethod
-    def get_parameters(params=None):
+    def get_parameters(dataset=None):
         raise NotImplementedError("Not implemented")
 
     @property

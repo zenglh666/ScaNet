@@ -63,7 +63,7 @@ class Model(interface.BaseModel):
                 x1 = x
 
             if memory is None:
-                x1 = tf.layers.conv2d(x1, params.growth_rate, kernel_size=3, padding='same', use_bias=False, name='_1_conv')
+                x1 = tf.layers.conv2d(x1, params.growth_rate, kernel_size=3, padding='same', use_bias=False, name='_2_conv')
                 x1 = tf.layers.dropout(x1, params.dropout, training=training, name='_2_drop')
                 x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
                 x1 = tf.nn.relu(x1, name='_2_relu')
@@ -126,7 +126,7 @@ class Model(interface.BaseModel):
         return "DenseModel"
 
     @staticmethod
-    def get_parameters(params=None):
+    def get_parameters(dataset=None):
         _params = tf.contrib.training.HParams(
             # model
             use_bc=False,
@@ -139,21 +139,20 @@ class Model(interface.BaseModel):
             batch_size=256,
             scale_l1=0.0,
             scale_l2=0.0001,
-            dropout=0.0,
+            dropout=0.2,
             use_memory=False,
             memory_size=0,
             max_memory_size=8192,
             mem_drop=0.0,
         )
-        if params.dataset == "cifar10" or params.dataset == "cifar100":
-            _params.add_hparam("train_steps", 60000)
-            _params.add_hparam("decay_steps", 20000)
-            _params.add_hparam("eval_steps", 2000)
-            _params.add_hparam("use_bc", False)
-        else:
-            _params.add_hparam("train_steps", 300000)
-            _params.add_hparam("decay_steps", 100000)
-            _params.add_hparam("eval_steps", 10000)
-            _params.add_hparam("use_bc", True)
+        if dataset is not None:
+            if dataset == "cifar10" or dataset == "cifar100":
+                _params.add_hparam("train_steps", 60000)
+                _params.add_hparam("decay_steps", 20000)
+                _params.add_hparam("eval_steps", 2000)
+            else:
+                _params.add_hparam("train_steps", 300000)
+                _params.add_hparam("decay_steps", 100000)
+                _params.add_hparam("eval_steps", 10000)
 
         return _params
