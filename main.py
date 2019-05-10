@@ -64,6 +64,7 @@ def default_parameters():
         # Default training hyper parameters
         initializer="normal_unit_scaling",
         initializer_gain=1.0,
+        initial_mode='fan_in',
         batch_size=256,
         gpu_num=0,
         scale_l1=0.0,
@@ -74,7 +75,7 @@ def default_parameters():
         adam_beta1=0.9,
         adam_beta2=0.999,
         adam_epsilon=1e-8,
-        clip_grad_norm=0.,
+        clip_grad_norm=1.,
         # Default Learning rate hyper parameters
         learning_rate=1e-1,
         learning_rate_decay="exponential_decay",
@@ -158,10 +159,10 @@ def get_initializer(params):
     elif params.initializer == "normal":
         return tf.random_normal_initializer(0.0, params.initializer_gain)
     elif params.initializer == "normal_unit_scaling":
-        return tf.variance_scaling_initializer(params.initializer_gain,
+        return tf.variance_scaling_initializer(params.initializer_gain, mode=params.initial_mode,
                                                distribution="truncated_normal")
     elif params.initializer == "uniform_unit_scaling":
-        return tf.variance_scaling_initializer(params.initializer_gain,
+        return tf.variance_scaling_initializer(params.initializer_gain, mode=params.initial_mode,
                                                distribution="uniform")
     else:
         raise ValueError("Unrecognized initializer: %s" % params.initializer)
@@ -215,7 +216,7 @@ def run_config(params):
         graph_options=graph_options,
         gpu_options=gpu_options)
 
-    mirrored_strategy = tf.distribute.MirroredStrategy()
+    mirrored_strategy = tf.contrib.distribute.MirroredStrategy()
 
     run_config = tf.estimator.RunConfig(
         model_dir=params.output,
@@ -297,7 +298,7 @@ def main(args):
     # Import and override parameters
     # Priorities (low -> high):
     # default -> saved -> command
-    params = merge_parameters(params, model_cls.get_parameters())
+    params = merge_parameters(params, model_cls.get_parameters(params))
     override_parameters(params, args)
 
     # Export all parameters and model specific parameters

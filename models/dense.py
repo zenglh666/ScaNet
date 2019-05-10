@@ -63,17 +63,21 @@ class Model(interface.BaseModel):
                 x1 = x
 
             if memory is None:
-                w_2_conv = tf.get_variable(name="w_2_conv", shape=[3, 3, x1.get_shape().as_list()[-1], params.growth_rate])
+                x1 = tf.layers.conv2d(x1, params.growth_rate, kernel_size=3, padding='same', use_bias=False, name='_1_conv')
+                x1 = tf.layers.dropout(x1, params.dropout, training=training, name='_2_drop')
+                x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
+                x1 = tf.nn.relu(x1, name='_2_relu')
             else:
                 w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1] * params.growth_rate, kernel_size=1, 
                     padding='same', use_bias=False, name='_m_2_conv1')
                 w_2_conv = tf.nn.tanh(w_2_conv, name='_m_2_act1')
                 w_2_conv = tf.reshape(w_2_conv, [3, 3, x1.get_shape().as_list()[-1], params.growth_rate])
 
-            x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
-            x1 = tf.layers.dropout(x1, params.dropout, training=training, name='_2_drop')
-            x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
-            x1 = tf.nn.relu(x1, name='_2_relu')
+                x1 = tf.nn.conv2d(x1, w_2_conv, strides=[1, 1, 1, 1], padding="SAME", name='_2_conv')
+                x1 = tf.layers.dropout(x1, params.dropout, training=training, name='_2_drop')
+                x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
+                x1 = tf.nn.relu(x1, name='_2_relu')
+                
             x = tf.concat([x, x1], axis=-1, name='_concat')
         return x
 
@@ -96,7 +100,7 @@ class Model(interface.BaseModel):
             else:
                 raise ValueError("Unable to Recognize Block Size")
 
-            if params.dataset == "cifar10" or params.dataset == "cifar10":
+            if params.dataset == "cifar10" or params.dataset == "cifar100":
                 with tf.variable_scope("conv1", reuse=tf.AUTO_REUSE):
                     x = tf.layers.conv2d(x, 2 * params.growth_rate, kernel_size=3,  padding='same', use_bias=False, name='_conv')
                     x = tf.layers.batch_normalization(x, axis=-1, epsilon=1.001e-5, name='_bn')
@@ -122,8 +126,8 @@ class Model(interface.BaseModel):
         return "DenseModel"
 
     @staticmethod
-    def get_parameters():
-        params = tf.contrib.training.HParams(
+    def get_parameters(params=None):
+        _params = tf.contrib.training.HParams(
             # model
             use_bc=False,
             blocks_num=3,
@@ -131,17 +135,25 @@ class Model(interface.BaseModel):
             growth_rate=12,
             net_name=None,
             reduction=0.5,
+            initial_mode='fan_out',
             batch_size=256,
             scale_l1=0.0,
             scale_l2=0.0001,
-            train_steps=60000,
-            decay_steps=20000,
-            eval_steps=2000,
             dropout=0.0,
             use_memory=False,
             memory_size=0,
             max_memory_size=8192,
             mem_drop=0.0,
         )
+        if params.dataset == "cifar10" or params.dataset == "cifar100":
+            _params.add_hparam("train_steps", 60000)
+            _params.add_hparam("decay_steps", 20000)
+            _params.add_hparam("eval_steps", 2000)
+            _params.add_hparam("use_bc", False)
+        else:
+            _params.add_hparam("train_steps", 300000)
+            _params.add_hparam("decay_steps", 100000)
+            _params.add_hparam("eval_steps", 10000)
+            _params.add_hparam("use_bc", True)
 
-        return params
+        return _params

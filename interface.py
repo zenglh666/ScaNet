@@ -48,6 +48,7 @@ class BaseModel(object):
                         if 'gamma' not in var.name:
                             reg_loss_list.append(tf.nn.l2_loss(var))
                         else:
+                            reg_loss_list.append(tf.nn.l2_loss(var - 1))
                             ignore_list.append(var)
                     reg_loss = tf.add_n(reg_loss_list, name="_reg_loss") * params.scale_l2
                 else:
@@ -64,7 +65,7 @@ class BaseModel(object):
         raise NotImplementedError("Not implemented")
 
     @staticmethod
-    def get_parameters():
+    def get_parameters(params=None):
         raise NotImplementedError("Not implemented")
 
     @property
