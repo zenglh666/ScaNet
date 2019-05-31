@@ -58,6 +58,7 @@ class BaseModel(object):
                 acc_1 = tf.reduce_mean(tf.cast(tf.math.in_top_k(logits, lables, 1), tf.float32))
                 acc_5 = tf.reduce_mean(tf.cast(tf.math.in_top_k(logits, lables, 5), tf.float32))
                 acc_dict = {"acc_top_1":acc_1, "acc_top_5":acc_5}
+
                 return loss_dict, acc_dict
 
     @staticmethod

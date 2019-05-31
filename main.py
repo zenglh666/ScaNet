@@ -53,6 +53,7 @@ def default_parameters():
         model="",
         job_id = "",
         log_id= "",
+        restore_memory_file=None,
         # Default hyper parameters
         pre_fetch=8,
         buffer_size=8192,
@@ -312,8 +313,15 @@ def main(args):
     log.addHandler(fh)
 
     # Build Estimator
+    for k,v in sorted(params.values().items()):
+        tf.logging.info("%s - %s" % (k, v))
     config = run_config(params)
-    estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=params.output, params=params, config=config)
+    if params.use_memory and params.restore_memory_file:
+        warm_start_from = tf.estimator.WarmStartSettings(params.restore_memory_file, vars_to_warm_start='.*memory.*')
+    else:
+        warm_start_from = None
+    estimator = tf.estimator.Estimator(model_fn=model_fn, model_dir=params.output, 
+        params=params, config=config, warm_start_from=warm_start_from)
 
     # Build input
     input_fn_train, train_num = dataset.get_train_eval_input("train", params)
