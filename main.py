@@ -53,7 +53,7 @@ def default_parameters():
         model="",
         job_id = "",
         log_id= "",
-        restore_memory_file=None,
+        restore_memory_file="",
         # Default hyper parameters
         pre_fetch=8,
         buffer_size=8192,
@@ -316,7 +316,7 @@ def main(args):
     for k,v in sorted(params.values().items()):
         tf.logging.info("%s - %s" % (k, v))
     config = run_config(params)
-    if params.use_memory and params.restore_memory_file:
+    if params.use_memory and params.restore_memory_file != "":
         warm_start_from = tf.estimator.WarmStartSettings(params.restore_memory_file, vars_to_warm_start='.*memory.*')
     else:
         warm_start_from = None
