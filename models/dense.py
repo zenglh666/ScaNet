@@ -6,11 +6,28 @@ import copy
 
 import tensorflow as tf
 import interface
+import math
 
 class Model(interface.BaseModel):
 
     def __init__(self, params, scope="DenseModel"):
         super(Model, self).__init__(params=params, scope=scope)
+
+    def get_weight_t1(self, memory, s1, s2):
+        w_2_conv = tf.layers.conv2d(memory, s1 * s2, kernel_size=1, 
+            padding='same', use_bias=False, name='_m_2_conv1')
+        return w_2_conv
+
+    def get_weight_t2(self, memory, s1, s2):
+        k_size = memory.get_shape().as_list()[-1]
+        k = int(math.sqrt(k_size))
+        w_2_conv = tf.reshape(memory, [9, k, k])
+        w_2_conv = tf.layers.conv1d(w_2_conv, s1, kernel_size=1, 
+            padding='same', use_bias=True, name='_m_2_conv1')
+        w_2_conv = tf.transpose(w_2_conv, [0, 2, 1])
+        w_2_conv = tf.layers.conv1d(w_2_conv, s2, kernel_size=1, 
+            padding='same', use_bias=True, name='_m_2_conv2')
+        return w_2_conv
 
     def transition_block(self, x, params, training, name):
         """A transition block.
@@ -68,8 +85,11 @@ class Model(interface.BaseModel):
                 x1 = tf.layers.batch_normalization(x1, axis=-1, epsilon=1.001e-5, name='_2_bn')
                 x1 = tf.nn.relu(x1, name='_2_relu')
             else:
-                w_2_conv = tf.layers.conv2d(memory, x1.get_shape().as_list()[-1] * params.growth_rate, kernel_size=1, 
-                    padding='same', use_bias=False, name='_m_2_conv1')
+                memory = tf.layers.dropout(memory, params.mem_drop, training=training)
+                if params.pool_type == 1:
+                    w_2_conv = self.get_weight_t1(memory, x1.get_shape().as_list()[-1], params.growth_rate)
+                elif params.pool_type == 2:
+                    w_2_conv = self.get_weight_t2(memory, x1.get_shape().as_list()[-1], params.growth_rate)
                 w_2_conv = tf.nn.tanh(w_2_conv, name='_m_2_act1')
                 w_2_conv = tf.reshape(w_2_conv, [3, 3, x1.get_shape().as_list()[-1], params.growth_rate])
 
@@ -141,9 +161,10 @@ class Model(interface.BaseModel):
             scale_l2=0.0001,
             dropout=0.2,
             use_memory=False,
-            memory_size=0,
+            memory_size=512,
             max_memory_size=8192,
             mem_drop=0.0,
+            pool_type=2,
         )
         if dataset is not None:
             if dataset == "cifar10" or dataset == "cifar100":

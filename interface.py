@@ -23,14 +23,8 @@ class BaseModel(object):
         params = params or self._params
         with tf.variable_scope(self._scope, reuse=tf.AUTO_REUSE, initializer=initializer, regularizer=regularizer) as scope:
             if params.use_memory:
-                if params.memory_size <= 0:
-                    memory_size = params.blocks_size * params.blocks_num * params.growth_rate
-                    memory_size = min(memory_size, params.max_memory_size)
-                else:
-                    memory_size = params.memory_size
-
-                memory = tf.get_variable(name="memory", shape=[1, 3, 3, memory_size])
-                memory = tf.layers.dropout(memory, params.mem_drop, training=mode=="train")
+                assert params.memory_size > 0
+                memory = tf.get_variable(name="memory", shape=[1, 3, 3, params.memory_size], trainable=params.memory_train)
             else:
                 memory = None
 

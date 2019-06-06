@@ -89,6 +89,10 @@ def default_parameters():
         # Default Validation hyper parameters
         eval_steps=10000,
         infer_in_validation=False,
+        # Default Memory Parameter
+        use_memory=False,
+        memory_size=0,
+        memory_train=False,
     )
     return params
 
