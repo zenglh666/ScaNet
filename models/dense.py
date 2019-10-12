@@ -25,6 +25,7 @@ class Model(interface.BaseModel):
         w_2_conv = tf.layers.conv1d(w_2_conv, s1, kernel_size=1, 
             padding='same', use_bias=True, name='_m_2_conv1')
         w_2_conv = tf.transpose(w_2_conv, [0, 2, 1])
+        w_2_conv = tf.nn.tanh(w_2_conv, name='_m_2_act0')
         w_2_conv = tf.layers.conv1d(w_2_conv, s2, kernel_size=1, 
             padding='same', use_bias=True, name='_m_2_conv2')
         return w_2_conv
